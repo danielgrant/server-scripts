@@ -20,19 +20,18 @@
 ##############################################################
 
 ##############################################################
-# report_bandwidth.sh
+# report_health.sh
 #
-# Script that, using vnstat, reports the daily, weekly or
-# monthly bandwidth usage for a given server.
+# Script that makes a number of calls to gather information
+# about the servers health, and reports this information via
+# email.
 #
-# Author:       Daniel Grant
-# Version:  1.0.0
+# Author:		Daniel Grant
+# Version:	1.0.0
 ##############################################################
 
 # Configuration
-MODE=weekly
 TO_EMAIL=
-CMD_VNSTAT=/usr/bin/vnstat
 CMD_SENDMAIL=/usr/sbin/sendmail
 
 log() {
@@ -52,7 +51,7 @@ log_error() {
 }
 
 check_var() {
-  if [ -z "$2" ]; then
+  if [ -z $2 ]; then
     log_error "$1 is not set"
     exit 1
   else
@@ -78,40 +77,62 @@ check_file() {
   fi
 }
 
+insert_break() {
+  echo "---------------------------------" >> $1
+}
+
 # Verify and log the configuration
-check_var "TO_EMAIL" $TO_EMAIL
-check_cmd "CMD_VNSTAT" $CMD_VNSTAT
-check_cmd "CMD_SENDMAIL" $CMD_SENDMAIL
+check_var "TO_EMAIL" "$TO_EMAIL"
+check_cmd "CMD_SENDMAIL" "$CMD_SENDMAIL"
 
 # Create, verify and log the temporary file
 OUTFILE=$(mktemp)
 check_file "temporary file" $OUTFILE
 
-# Determine the vnstat command and parameters
-if [ "$MODE" = "daily" ]; then
-  VNSTAT_PARAM="$CMD_VNSTAT --days | grep $(date --date="1 day ago" +"%x")"
-else
-  if [ "$MODE" = "weekly" ]; then
-    VNSTAT_PARAM="$CMD_VNSTAT --weeks | grep \"last week\""
-  else
-    if [ "$MODE" = "monthly" ]; then
-      VNSTAT_PARAM="$CMD_VNSTAT --months | grep \"$(date --date="1 month ago" +"%b '%y")\""
-    else
-      log "ERROR" "Invalid MODE, must be one of 'daily', 'weekly' or 'monthly'"
-      exit 1
-    fi
-  fi
-fi
+# Report hostname and server uptime
+echo "$(hostname -f): $(uptime --pretty)" >> $OUTFILE
+insert_break $OUTFILE
 
-# Execute vnstat and process the output
-log_info "Executing: $VNSTAT_PARAM"
-eval $VNSTAT_PARAM > $OUTFILE
+# Report CPU percentage usage
+echo "$(top -b -n 1 | grep ^%Cpu)" >> $OUTFILE
+insert_break $OUTFILE
+
+# Report system load averages
+echo "Load Average: $(cat /proc/loadavg)" >> $OUTFILE
+insert_break $OUTFILE
+
+# Report memory consumption
+echo "$(free -h)" >> $OUTFILE
+insert_break $OUTFILE
+
+# Report disk usage
+echo "$(df -h)" >> $OUTFILE
+insert_break $OUTFILE
+
+# Report IO stats
+echo "$(iostat -dmx | tail -n +3)" >> $OUTFILE
+insert_break $OUTFILE
+
+# Report currently logged in users
+echo "Currently logged in users:\n$(who)" >> $OUTFILE
+insert_break $OUTFILE
+
+# Report last 10 logins
+echo "Last 10 logins:\n$(last | head -10)" >> $OUTFILE
+insert_break $OUTFILE
+
+# Report top 10 processes by CPU
+echo "Top 10 processes by CPU:\n$(ps -eo pcpu,pid,user,args | sort -k 1 -r | head -11)" >> $OUTFILE
+insert_break $OUTFILE
+
+# Report top 10 processes by memory
+echo "Top 10 processes by memory:\n$(ps -eo pmem,pid,user,args | sort -k 1 -r | head -11)" >> $OUTFILE
 
 # Dispatch the email
 if [ -s "$OUTFILE" ]; then
   log_info "Emailing report to: $TO_EMAIL"
   (
-    echo "Subject: [bandwidth report] $(hostname -f) - $MODE report"
+    echo "Subject: [healthcheck report] $(hostname -f)"
     echo "To: $TO_EMAIL"
     echo ""
     cat $OUTFILE
