@@ -85,7 +85,7 @@ check_file "temporary file" $OUTFILE
 
 # Determine the vnstat command and parameters
 if [ "$MODE" = "daily" ]; then
-  VNSTAT_PARAM="$CMD_VNSTAT --days | grep $(date --date="1 day ago" +"%x")"
+  VNSTAT_PARAM="$CMD_VNSTAT --days --locale en_GB.utf8 | grep $(date --date="1 day ago" +"%d/%m/%y")"
 else
   if [ "$MODE" = "weekly" ]; then
     VNSTAT_PARAM="$CMD_VNSTAT --weeks | grep \"last week\""
