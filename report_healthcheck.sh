@@ -1,11 +1,11 @@
-#!/bin/sh
+#!/bin/bash
 
 ##############################################################
-# Copyright 2014 Daniel Grant
+# Copyright 2019 Daniel Grant
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -22,8 +22,8 @@
 # about the servers health, and reports this information via
 # email.
 #
-# Author:		Daniel Grant
-# Version:	1.0.0
+# Author:	Daniel Grant
+# Version:	1.0.1
 ##############################################################
 
 # Configuration
@@ -47,7 +47,7 @@ log_error() {
 }
 
 check_var() {
-  if [ -z $2 ]; then
+  if [ -z "$2" ]; then
     log_error "$1 is not set"
     exit 1
   else
@@ -56,7 +56,7 @@ check_var() {
 }
 
 check_cmd() {
-  if [ -x $2 ]; then
+  if [ -x "$2" ]; then
     log_info "Got $1 = $2"
   else
     log_error "$2 does not exist"
@@ -65,7 +65,7 @@ check_cmd() {
 }
 
 check_file() {
-  if [ -w $2 ]; then
+  if [ -w "$2" ]; then
     log_info "Got $1 = $2"
   else
     log_error "$2 does not exist or is not writeable"
@@ -74,7 +74,7 @@ check_file() {
 }
 
 insert_break() {
-  echo "---------------------------------" >> $1
+  echo "---------------------------------" >> "$1"
 }
 
 # Verify and log the configuration
@@ -83,46 +83,46 @@ check_cmd "CMD_SENDMAIL" "$CMD_SENDMAIL"
 
 # Create, verify and log the temporary file
 OUTFILE=$(mktemp)
-check_file "temporary file" $OUTFILE
+check_file "temporary file" "$OUTFILE"
 
 # Report hostname and server uptime
-echo "$(hostname -f): $(uptime --pretty)" >> $OUTFILE
-insert_break $OUTFILE
+echo "$(hostname -f): $(uptime --pretty)" >> "$OUTFILE"
+insert_break "$OUTFILE"
 
 # Report CPU percentage usage
-echo "$(top -b -n 1 | grep ^%Cpu)" >> $OUTFILE
-insert_break $OUTFILE
+top -b -n 1 | grep ^%Cpu >> "$OUTFILE"
+insert_break "$OUTFILE"
 
 # Report system load averages
-echo "Load Average: $(cat /proc/loadavg)" >> $OUTFILE
-insert_break $OUTFILE
+echo "Load Average: $(cat /proc/loadavg)" >> "$OUTFILE"
+insert_break "$OUTFILE"
 
 # Report memory consumption
-echo "$(free -h)" >> $OUTFILE
-insert_break $OUTFILE
+free -h >> "$OUTFILE"
+insert_break "$OUTFILE"
 
 # Report disk usage
-echo "$(df -h)" >> $OUTFILE
-insert_break $OUTFILE
+df -h >> "$OUTFILE"
+insert_break "$OUTFILE"
 
 # Report IO stats
-echo "$(iostat -dmx | tail -n +3)" >> $OUTFILE
-insert_break $OUTFILE
+iostat -dmx | tail -n +3 >> "$OUTFILE"
+insert_break "$OUTFILE"
 
 # Report currently logged in users
-echo "Currently logged in users:\n$(who)" >> $OUTFILE
-insert_break $OUTFILE
+echo -e "Currently logged in users:\n$(who)" >> "$OUTFILE"
+insert_break "$OUTFILE"
 
 # Report last 10 logins
-echo "Last 10 logins:\n$(last | head -10)" >> $OUTFILE
-insert_break $OUTFILE
+echo -e "Last 10 logins:\n$(last | head -10)" >> "$OUTFILE"
+insert_break "$OUTFILE"
 
 # Report top 10 processes by CPU
-echo "Top 10 processes by CPU:\n$(ps -eo pcpu,pid,user,args | sort -k 1 -r | head -11)" >> $OUTFILE
-insert_break $OUTFILE
+echo -e "Top 10 processes by CPU:\n$(ps -eo pcpu,pid,user,args | sort -k 1 -r | head -11)" >> "$OUTFILE"
+insert_break "$OUTFILE"
 
 # Report top 10 processes by memory
-echo "Top 10 processes by memory:\n$(ps -eo pmem,pid,user,args | sort -k 1 -r | head -11)" >> $OUTFILE
+echo -e "Top 10 processes by memory:\n$(ps -eo pmem,pid,user,args | sort -k 1 -r | head -11)" >> "$OUTFILE"
 
 # Dispatch the email
 if [ -s "$OUTFILE" ]; then
@@ -131,7 +131,7 @@ if [ -s "$OUTFILE" ]; then
     echo "Subject: [healthcheck report] $(hostname -f)"
     echo "To: $TO_EMAIL"
     echo ""
-    cat $OUTFILE
+    cat "$OUTFILE"
   ) | $CMD_SENDMAIL $TO_EMAIL
 else
   log_error "Temporary file '$OUTFILE' does not exist or is empty"
@@ -139,6 +139,6 @@ fi
 
 # Delete the temporary file
 log_info "Deleting temporary file '$OUTFILE'"
-rm -f $OUTFILE
+rm -f "$OUTFILE"
 
 exit 0

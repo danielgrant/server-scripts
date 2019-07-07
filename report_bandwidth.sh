@@ -1,11 +1,11 @@
-#!/bin/sh
+#!/bin/bash
 
 ##############################################################
-# Copyright 2014 Daniel Grant
+# Copyright 2019 Daniel Grant
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -21,12 +21,12 @@
 # Script that, using vnstat, reports the daily, weekly or
 # monthly bandwidth usage for a given server.
 #
-# Author:       Daniel Grant
-# Version:  1.0.0
+# Author:   Daniel Grant
+# Version:  1.0.1
 ##############################################################
 
 # Configuration
-MODE=weekly
+MODE=daily
 TO_EMAIL=
 CMD_VNSTAT=/usr/bin/vnstat
 CMD_SENDMAIL=/usr/sbin/sendmail
@@ -57,7 +57,7 @@ check_var() {
 }
 
 check_cmd() {
-  if [ -x $2 ]; then
+  if [ -x "$2" ]; then
     log_info "Got $1 = $2"
   else
     log_error "$2 does not exist"
@@ -66,7 +66,7 @@ check_cmd() {
 }
 
 check_file() {
-  if [ -w $2 ]; then
+  if [ -w "$2" ]; then
     log_info "Got $1 = $2"
   else
     log_error "$2 does not exist or is not writeable"
@@ -81,17 +81,17 @@ check_cmd "CMD_SENDMAIL" $CMD_SENDMAIL
 
 # Create, verify and log the temporary file
 OUTFILE=$(mktemp)
-check_file "temporary file" $OUTFILE
+check_file "temporary file" "$OUTFILE"
 
 # Determine the vnstat command and parameters
 if [ "$MODE" = "daily" ]; then
-  VNSTAT_PARAM="$CMD_VNSTAT --days --locale en_GB.utf8 | grep $(date --date="1 day ago" +"%d/%m/%y")"
+  VNSTAT_PARAMS="--days --locale en_GB.utf8"
 else
   if [ "$MODE" = "weekly" ]; then
-    VNSTAT_PARAM="$CMD_VNSTAT --weeks | grep \"last week\""
+    VNSTAT_PARAMS="--weeks"
   else
     if [ "$MODE" = "monthly" ]; then
-      VNSTAT_PARAM="$CMD_VNSTAT --months | grep \"$(date --date="1 month ago" +"%b '%y")\""
+      VNSTAT_PARAMS="--months"
     else
       log "ERROR" "Invalid MODE, must be one of 'daily', 'weekly' or 'monthly'"
       exit 1
@@ -100,8 +100,8 @@ else
 fi
 
 # Execute vnstat and process the output
-log_info "Executing: $VNSTAT_PARAM"
-eval $VNSTAT_PARAM > $OUTFILE
+log_info "Executing: $CMD_VNSTAT $VNSTAT_PARAMS"
+eval "$CMD_VNSTAT $VNSTAT_PARAMS" > "$OUTFILE"
 
 # Dispatch the email
 if [ -s "$OUTFILE" ]; then
@@ -110,7 +110,7 @@ if [ -s "$OUTFILE" ]; then
     echo "Subject: [bandwidth report] $(hostname -f) - $MODE report"
     echo "To: $TO_EMAIL"
     echo ""
-    cat $OUTFILE
+    cat "$OUTFILE"
   ) | $CMD_SENDMAIL $TO_EMAIL
 else
   log_error "Temporary file '$OUTFILE' does not exist or is empty"
@@ -118,6 +118,6 @@ fi
 
 # Delete the temporary file
 log_info "Deleting temporary file '$OUTFILE'"
-rm -f $OUTFILE
+rm -f "$OUTFILE"
 
 exit 0
